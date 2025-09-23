@@ -1,0 +1,24 @@
+# Node / Vite
+brandbot-frontend/node_modules/
+brandbot-frontend/dist/
+
+# Python
+brandbot-backend/__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+brandbot-backend/.env
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+
+# Data generated at runtime
+brandbot-backend/data/clients.json
+brandbot-backend/data/content_rules.json
