@@ -13,7 +13,7 @@ start "BrandBot Frontend" cmd /k "cd brandbot-frontend && npm run dev"
 
 echo.
 echo Both servers are starting...
-echo Backend: http://localhost:8000
+echo Backend: https://brandbot.onrender.com
 echo Frontend: http://localhost:5173
 echo.
 echo Press any key to exit this window...

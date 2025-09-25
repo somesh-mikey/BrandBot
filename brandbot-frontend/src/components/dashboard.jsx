@@ -17,7 +17,7 @@ const Dashboard = () => {
   useEffect(() => {
     const checkBackendConnection = async () => {
       try {
-        const res = await fetch("http://localhost:8000/health");
+        const res = await fetch("https://brandbot.onrender.com/health");
         if (res.ok) {
           setBackendStatus("connected");
         } else {
@@ -46,7 +46,7 @@ const Dashboard = () => {
     }
 
     try {
-      const res = await fetch("http://localhost:8000/generate", {
+      const res = await fetch("https://brandbot.onrender.com/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -62,10 +62,14 @@ const Dashboard = () => {
       const data = await res.json();
       setGeneratedContent(data.generated_content || "No content generated.");
       setAudienceTargeted(data.rationale || "No audience analysis available.");
-      setMarketingSuggestions(data.marketing_suggestions || "No marketing suggestions available.");
+      setMarketingSuggestions(
+        data.marketing_suggestions || "No marketing suggestions available."
+      );
     } catch (err) {
       console.error("Error generating content:", err);
-      setGeneratedContent("Error generating content. Please check if the backend server is running on http://localhost:8000");
+      setGeneratedContent(
+        "Error generating content. Please check if the backend server is running on https://brandbot.onrender.com"
+      );
       setAudienceTargeted("");
       setMarketingSuggestions("");
     }
@@ -81,12 +85,22 @@ const Dashboard = () => {
           <div>
             <h1 className="text-white text-5xl font-bold">Good Evening</h1>
             <div className="flex items-center mt-2">
-              <div className={`w-3 h-3 rounded-full mr-2 ${backendStatus === "connected" ? "bg-green-400" :
-                  backendStatus === "disconnected" ? "bg-red-400" : "bg-yellow-400"
-                }`}></div>
+              <div
+                className={`w-3 h-3 rounded-full mr-2 ${
+                  backendStatus === "connected"
+                    ? "bg-green-400"
+                    : backendStatus === "disconnected"
+                    ? "bg-red-400"
+                    : "bg-yellow-400"
+                }`}
+              ></div>
               <span className="text-violet-300 text-sm">
-                Backend: {backendStatus === "connected" ? "Connected" :
-                  backendStatus === "disconnected" ? "Disconnected" : "Checking..."}
+                Backend:{" "}
+                {backendStatus === "connected"
+                  ? "Connected"
+                  : backendStatus === "disconnected"
+                  ? "Disconnected"
+                  : "Checking..."}
               </span>
             </div>
           </div>
@@ -145,16 +159,19 @@ const Dashboard = () => {
               />
             </div>
             <button
-              className={`w-full py-5 rounded-xl font-bold text-xl mt-2 mb-2 ${backendStatus === "connected" && !loading
+              className={`w-full py-5 rounded-xl font-bold text-xl mt-2 mb-2 ${
+                backendStatus === "connected" && !loading
                   ? "bg-violet-100 text-violet-950 hover:bg-violet-200"
                   : "bg-gray-400 text-gray-600 cursor-not-allowed"
-                }`}
+              }`}
               onClick={handleGenerate}
               disabled={loading || backendStatus !== "connected"}
             >
-              {loading ? "Generating..." :
-                backendStatus === "connected" ? "Generate Content" :
-                  "Backend Disconnected"}
+              {loading
+                ? "Generating..."
+                : backendStatus === "connected"
+                ? "Generate Content"
+                : "Backend Disconnected"}
             </button>
             <div>
               <label className="block text-white text-lg font-medium mb-2">

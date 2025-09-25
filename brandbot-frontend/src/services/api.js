@@ -1,5 +1,7 @@
 // Use VITE_API_URL when provided; otherwise default to local backend for dev
-const API_BASE_URL = (import.meta?.env?.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+const API_BASE_URL = (
+  import.meta?.env?.VITE_API_URL || "https://brandbot.onrender.com"
+).replace(/\/$/, "");
 
 class ApiService {
   constructor() {
@@ -10,7 +12,7 @@ class ApiService {
     const url = `${this.baseURL}${endpoint}`;
     const config = {
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...options.headers,
       },
       ...options,
@@ -18,34 +20,38 @@ class ApiService {
 
     try {
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        throw new Error(
+          errorData.detail || `HTTP error! status: ${response.status}`
+        );
       }
 
       return await response.json();
     } catch (error) {
-      console.error('API request failed:', error);
+      console.error("API request failed:", error);
       throw error;
     }
   }
 
   // Health check
   async healthCheck() {
-    return this.request('/health');
+    return this.request("/health");
   }
 
   // Client Management APIs
-  async getClients(search = '', planType = '', status = '') {
+  async getClients(search = "", planType = "", status = "") {
     const params = new URLSearchParams();
-    if (search) params.append('search', search);
-    if (planType) params.append('plan_type', planType);
-    if (status) params.append('status', status);
-    
+    if (search) params.append("search", search);
+    if (planType) params.append("plan_type", planType);
+    if (status) params.append("status", status);
+
     const queryString = params.toString();
-    const endpoint = queryString ? `/admin/clients?${queryString}` : '/admin/clients';
-    
+    const endpoint = queryString
+      ? `/admin/clients?${queryString}`
+      : "/admin/clients";
+
     return this.request(endpoint);
   }
 
@@ -54,55 +60,55 @@ class ApiService {
   }
 
   async createClient(clientData) {
-    return this.request('/admin/clients', {
-      method: 'POST',
+    return this.request("/admin/clients", {
+      method: "POST",
       body: JSON.stringify(clientData),
     });
   }
 
   async updateClient(clientId, clientData) {
     return this.request(`/admin/clients/${clientId}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(clientData),
     });
   }
 
   async deleteClient(clientId) {
     return this.request(`/admin/clients/${clientId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
   // Content Rules APIs
   async getContentRules() {
-    return this.request('/admin/content-rules');
+    return this.request("/admin/content-rules");
   }
 
   async updateGlobalContentRules(globalRules) {
-    return this.request('/admin/content-rules/global', {
-      method: 'PUT',
+    return this.request("/admin/content-rules/global", {
+      method: "PUT",
       body: JSON.stringify(globalRules),
     });
   }
 
   async updateClientContentRules(clientId, clientRules) {
     return this.request(`/admin/content-rules/client/${clientId}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(clientRules),
     });
   }
 
   async previewContent(previewRequest) {
-    return this.request('/admin/content-preview', {
-      method: 'POST',
+    return this.request("/admin/content-preview", {
+      method: "POST",
       body: JSON.stringify(previewRequest),
     });
   }
 
   // Content Generation APIs
   async generateContent(prompt, businessId) {
-    return this.request('/generate', {
-      method: 'POST',
+    return this.request("/generate", {
+      method: "POST",
       body: JSON.stringify({
         prompt,
         business_id: businessId,
@@ -111,7 +117,7 @@ class ApiService {
   }
 
   async getBusinesses() {
-    return this.request('/business');
+    return this.request("/business");
   }
 
   async getBusinessInfo(businessId) {
