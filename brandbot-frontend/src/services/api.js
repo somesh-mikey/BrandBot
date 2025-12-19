@@ -1,6 +1,6 @@
 // Use VITE_API_URL when provided; otherwise default to local backend for dev
 const API_BASE_URL = (
-  import.meta?.env?.VITE_API_URL || "https://brandbot.onrender.com"
+  import.meta?.env?.VITE_API_URL || "http://localhost:8000"
 ).replace(/\/$/, "");
 
 class ApiService {
@@ -41,17 +41,26 @@ class ApiService {
   }
 
   // Client Management APIs
-  async getClients(search = "", planType = "", status = "") {
+  async getClients(
+    search = "",
+    planType = "",
+    status = "",
+    page = 1,
+    pageSize = 10
+  ) {
     const params = new URLSearchParams();
     if (search) params.append("search", search);
     if (planType) params.append("plan_type", planType);
     if (status) params.append("status", status);
+    if (page) params.append("page", page);
+    if (pageSize) params.append("page_size", pageSize);
 
     const queryString = params.toString();
     const endpoint = queryString
       ? `/admin/clients?${queryString}`
       : "/admin/clients";
 
+    // The server now returns { items: [...], total: N }
     return this.request(endpoint);
   }
 
@@ -77,6 +86,44 @@ class ApiService {
     return this.request(`/admin/clients/${clientId}`, {
       method: "DELETE",
     });
+  }
+
+  async uploadClientDocument(clientId, file) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const url = `${this.baseURL}/admin/clients/${clientId}/upload-document`;
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        body: formData,
+        // Don't set Content-Type header - browser will set it automatically with boundary
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage =
+          errorData.detail ||
+          errorData.message ||
+          `HTTP error! status: ${response.status}`;
+        console.error("Upload error response:", errorData);
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Upload request failed:", error);
+      throw error;
+    }
+  }
+
+  async getClientDocument(clientId) {
+    return this.request(`/admin/clients/${clientId}/document`);
+  }
+
+  async getAllClientsForSelection() {
+    return this.request("/clients");
   }
 
   // Content Rules APIs
@@ -106,13 +153,20 @@ class ApiService {
   }
 
   // Content Generation APIs
-  async generateContent(prompt, businessId) {
+  async generateContent(prompt, businessId, clientId = null) {
+    const body = {
+      prompt,
+    };
+
+    if (clientId) {
+      body.client_id = clientId;
+    } else if (businessId) {
+      body.business_id = businessId;
+    }
+
     return this.request("/generate", {
       method: "POST",
-      body: JSON.stringify({
-        prompt,
-        business_id: businessId,
-      }),
+      body: JSON.stringify(body),
     });
   }
 

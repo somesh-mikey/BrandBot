@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "./sidebar";
+import apiService from "../services/api";
 
 const BUSINESS_ID = "xyz-dimensions-client-01"; // Use your business ID from backend
 
@@ -12,8 +13,11 @@ const Dashboard = () => {
   const [audienceTargeted, setAudienceTargeted] = useState("");
   const [marketingSuggestions, setMarketingSuggestions] = useState("");
   const [backendStatus, setBackendStatus] = useState("checking");
+  const [selectedClientId, setSelectedClientId] = useState(null);
+  const [availableClients, setAvailableClients] = useState([]);
+  const [loadingClients, setLoadingClients] = useState(false);
 
-  // Check backend connection on component mount
+  // Check backend connection and load clients on component mount
   useEffect(() => {
     const checkBackendConnection = async () => {
       try {
@@ -28,12 +32,36 @@ const Dashboard = () => {
       }
     };
     checkBackendConnection();
+
+    // Load available clients
+    loadAvailableClients();
   }, []);
+
+  const loadAvailableClients = async () => {
+    setLoadingClients(true);
+    try {
+      const clients = await apiService.getAllClientsForSelection();
+      setAvailableClients(clients);
+      // Auto-select first client if available
+      if (clients.length > 0 && !selectedClientId) {
+        setSelectedClientId(clients[0].id);
+      }
+    } catch (err) {
+      console.error("Error loading clients:", err);
+    } finally {
+      setLoadingClients(false);
+    }
+  };
 
   const handleGenerate = async () => {
     // Validate required fields
     if (!contentType || !contentGoal) {
       alert("Please fill in both Content Type and Content Goal fields.");
+      return;
+    }
+
+    if (!selectedClientId) {
+      alert("Please select a client profile.");
       return;
     }
 
@@ -46,20 +74,13 @@ const Dashboard = () => {
     }
 
     try {
-      const res = await fetch("https://brandbot.onrender.com/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          business_id: BUSINESS_ID,
-        }),
-      });
+      // Use client_id if selected, otherwise fall back to business_id
+      const data = await apiService.generateContent(
+        prompt,
+        selectedClientId ? null : BUSINESS_ID,
+        selectedClientId
+      );
 
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-
-      const data = await res.json();
       setGeneratedContent(data.generated_content || "No content generated.");
       setAudienceTargeted(data.rationale || "No audience analysis available.");
       setMarketingSuggestions(
@@ -68,7 +89,7 @@ const Dashboard = () => {
     } catch (err) {
       console.error("Error generating content:", err);
       setGeneratedContent(
-        "Error generating content. Please check if the backend server is running on https://brandbot.onrender.com"
+        `Error generating content: ${err.message}. Please check if the backend server is running.`
       );
       setAudienceTargeted("");
       setMarketingSuggestions("");
@@ -86,21 +107,20 @@ const Dashboard = () => {
             <h1 className="text-white text-5xl font-bold">Good Evening</h1>
             <div className="flex items-center mt-2">
               <div
-                className={`w-3 h-3 rounded-full mr-2 ${
-                  backendStatus === "connected"
+                className={`w-3 h-3 rounded-full mr-2 ${backendStatus === "connected"
                     ? "bg-green-400"
                     : backendStatus === "disconnected"
-                    ? "bg-red-400"
-                    : "bg-yellow-400"
-                }`}
+                      ? "bg-red-400"
+                      : "bg-yellow-400"
+                  }`}
               ></div>
               <span className="text-violet-300 text-sm">
                 Backend:{" "}
                 {backendStatus === "connected"
                   ? "Connected"
                   : backendStatus === "disconnected"
-                  ? "Disconnected"
-                  : "Checking..."}
+                    ? "Disconnected"
+                    : "Checking..."}
               </span>
             </div>
           </div>
@@ -118,6 +138,27 @@ const Dashboard = () => {
         <div className="flex gap-8 flex-1">
           {/* Left Column */}
           <section className="flex-2 flex flex-col gap-6 w-2/3">
+            <div>
+              <label className="block text-white text-lg font-medium mb-2">
+                Select Client Profile
+              </label>
+              <select
+                className="w-full p-4 rounded-xl text-violet-950 bg-white text-lg outline-none"
+                value={selectedClientId || ""}
+                onChange={(e) => setSelectedClientId(e.target.value ? parseInt(e.target.value) : null)}
+                disabled={loadingClients}
+              >
+                <option value="">-- Select Client --</option>
+                {availableClients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.company_name} ({client.plan_type})
+                  </option>
+                ))}
+              </select>
+              {loadingClients && (
+                <p className="text-violet-300 text-sm mt-1">Loading clients...</p>
+              )}
+            </div>
             <div>
               <label className="block text-white text-lg font-medium mb-2">
                 Content Type
@@ -159,19 +200,18 @@ const Dashboard = () => {
               />
             </div>
             <button
-              className={`w-full py-5 rounded-xl font-bold text-xl mt-2 mb-2 ${
-                backendStatus === "connected" && !loading
+              className={`w-full py-5 rounded-xl font-bold text-xl mt-2 mb-2 ${backendStatus === "connected" && !loading && selectedClientId
                   ? "bg-violet-100 text-violet-950 hover:bg-violet-200"
                   : "bg-gray-400 text-gray-600 cursor-not-allowed"
-              }`}
+                }`}
               onClick={handleGenerate}
-              disabled={loading || backendStatus !== "connected"}
+              disabled={loading || backendStatus !== "connected" || !selectedClientId}
             >
               {loading
                 ? "Generating..."
                 : backendStatus === "connected"
-                ? "Generate Content"
-                : "Backend Disconnected"}
+                  ? "Generate Content"
+                  : "Backend Disconnected"}
             </button>
             <div>
               <label className="block text-white text-lg font-medium mb-2">

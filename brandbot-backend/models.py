@@ -4,7 +4,8 @@ from datetime import datetime
 
 class PromptRequest(BaseModel):
     prompt: str
-    business_id: str
+    business_id: Optional[str] = None  # Keep for backward compatibility
+    client_id: Optional[int] = None  # New: client ID for client-based generation
 
 class GPTResponse(BaseModel):
     generated_content: str
@@ -21,6 +22,8 @@ class ClientCreate(BaseModel):
     brand_tone: str
     audience_type: str
     marketing_suggestions: bool = True
+    instruction_document: Optional[str] = None  # Store document content/text
+    document_filename: Optional[str] = None  # Store original filename
 
 class ClientUpdate(BaseModel):
     company_name: Optional[str] = None
@@ -30,6 +33,8 @@ class ClientUpdate(BaseModel):
     brand_tone: Optional[str] = None
     audience_type: Optional[str] = None
     marketing_suggestions: Optional[bool] = None
+    instruction_document: Optional[str] = None
+    document_filename: Optional[str] = None
 
 class Client(BaseModel):
     id: int
@@ -43,6 +48,8 @@ class Client(BaseModel):
     status: str = "active"
     date_joined: datetime
     last_activity: Optional[datetime] = None
+    instruction_document: Optional[str] = None  # Store document content/text
+    document_filename: Optional[str] = None  # Store original filename
 
 class ContentRulesGlobal(BaseModel):
     enabled: bool = True

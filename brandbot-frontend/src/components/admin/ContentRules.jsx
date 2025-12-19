@@ -49,7 +49,7 @@ const ContentRules = () => {
     const [clients, setClients] = useState([]);
 
     const filteredClients = clients.filter(client =>
-        client.companyName.toLowerCase().includes(clientSearchQuery.toLowerCase())
+        client.name && client.name.toLowerCase().includes(clientSearchQuery.toLowerCase())
     );
 
     // Load initial data
