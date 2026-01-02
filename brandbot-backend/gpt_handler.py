@@ -53,7 +53,7 @@ def call_gpt(prompt: str):
             {"role": "user", "content": prompt}
         ],
         temperature=0.7,
-        max_tokens=400,
+        max_tokens=2000,  # Increased to handle longer prompts with file content
     )
     return response.choices[0].message.content.strip()
 

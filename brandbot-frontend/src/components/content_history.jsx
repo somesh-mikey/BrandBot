@@ -1,15 +1,35 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "./sidebar";
 
-const promptHistory = [
-  "Generate a Facebook ad for summer sale",
-  "Instagram post for product launch",
-  "Write a tweet about eco-friendly packaging",
-  "Create a LinkedIn update for company milestone",
-  "Suggest a YouTube video title for unboxing",
-];
-
 const ContentHistory = () => {
+  const [promptHistory, setPromptHistory] = useState([]);
+
+  useEffect(() => {
+    // Load history from localStorage
+    const historyKey = "contentHistory";
+    const storedHistory = localStorage.getItem(historyKey);
+    if (storedHistory) {
+      try {
+        const parsedHistory = JSON.parse(storedHistory);
+        setPromptHistory(parsedHistory);
+      } catch (err) {
+        console.error("Error parsing content history:", err);
+        setPromptHistory([]);
+      }
+    }
+  }, []);
+
+  const formatDate = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
     <div className="flex min-h-screen bg-white font-inter rounded-tl-2xl rounded-bl-2xl">
       <Sidebar />
@@ -32,18 +52,24 @@ const ContentHistory = () => {
             <h2 className="text-2xl font-semibold text-violet-950 mb-6">
               Your Prompt History
             </h2>
-            <ul className="space-y-4">
-              {promptHistory.map((prompt, idx) => (
-                <li key={idx}>
-                  <a
-                    href="#"
-                    className="block text-lg text-violet-900 hover:text-violet-700 hover:underline transition-colors bg-violet-50 rounded-lg px-4 py-3"
-                  >
-                    {prompt}
-                  </a>
-                </li>
-              ))}
-            </ul>
+            {promptHistory.length === 0 ? (
+              <p className="text-violet-700 text-lg">No content history yet. Generate some content to see it here!</p>
+            ) : (
+              <ul className="space-y-4">
+                {promptHistory.map((entry, idx) => (
+                  <li key={idx}>
+                    <div className="block text-lg text-violet-900 bg-violet-50 rounded-lg px-4 py-3 hover:bg-violet-100 transition-colors">
+                      <div className="font-medium mb-1">{entry.prompt}</div>
+                      <div className="text-sm text-violet-600 flex items-center gap-4 mt-2">
+                        <span>Type: {entry.contentType}</span>
+                        <span>•</span>
+                        <span>{formatDate(entry.timestamp)}</span>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </section>
       </main>

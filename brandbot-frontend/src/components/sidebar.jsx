@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 
 const navLinks = [
-  { to: "/", label: "Dashboard" },
+  { to: "/dashboard", label: "Dashboard" },
   { to: "/content-history", label: "Content History" },
   { to: "/pricing", label: "Pricing" },
   { to: "/profile", label: "Profile" },
@@ -21,11 +21,10 @@ const Sidebar = () => {
             <Link
               key={link.to}
               to={link.to}
-              className={`text-left px-6 py-3 rounded-xl font-medium text-lg ${
-                location.pathname === link.to
+              className={`text-left px-6 py-3 rounded-xl font-medium text-lg ${location.pathname === link.to
                   ? "bg-violet-100 text-violet-950"
                   : "hover:bg-violet-100 text-violet-950"
-              }`}
+                }`}
             >
               {link.label}
             </Link>

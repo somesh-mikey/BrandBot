@@ -10,8 +10,6 @@ const Dashboard = () => {
   const [media, setMedia] = useState(null);
   const [loading, setLoading] = useState(false);
   const [generatedContent, setGeneratedContent] = useState("");
-  const [audienceTargeted, setAudienceTargeted] = useState("");
-  const [marketingSuggestions, setMarketingSuggestions] = useState("");
   const [backendStatus, setBackendStatus] = useState("checking");
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [availableClients, setAvailableClients] = useState([]);
@@ -55,8 +53,19 @@ const Dashboard = () => {
 
   const handleGenerate = async () => {
     // Validate required fields
-    if (!contentType || !contentGoal) {
-      alert("Please fill in both Content Type and Content Goal fields.");
+    if (!contentGoal) {
+      alert("Please fill in the Content Goal field.");
+      return;
+    }
+
+    // Check if it's a question/analysis request
+    const isQuestion = contentType === "Question/Analysis" ||
+      /^(what|who|when|where|why|how|analyze|tell me|explain|describe|summarize|list|identify)/i.test(contentGoal.trim()) ||
+      contentGoal.trim().endsWith('?');
+
+    // Content Type is optional for questions, required for content generation
+    if (!isQuestion && !contentType) {
+      alert("Please select a Content Type or ask a question.");
       return;
     }
 
@@ -67,10 +76,56 @@ const Dashboard = () => {
 
     setLoading(true);
 
-    // Build prompt from form fields
-    let prompt = `Content Type: ${contentType}\nContent Goal: ${contentGoal}`;
+    // Read media file content if uploaded
+    let mediaContent = null;
     if (media) {
-      prompt += `\nMedia uploaded: ${media.name}`;
+      try {
+        const fileType = media.type || "";
+
+        if (fileType.startsWith("text/") || media.name.endsWith(".txt") || media.name.endsWith(".md") ||
+          media.name.endsWith(".doc") || media.name.endsWith(".docx") || media.name.toLowerCase().includes("resume")) {
+          // Read as text for text files
+          mediaContent = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsText(media);
+          });
+        } else if (fileType.startsWith("image/")) {
+          // For images, read as base64 and describe
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result.split(",")[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(media);
+          });
+          mediaContent = `[Image file: ${media.name}]`;
+        } else {
+          // For other file types, just mention the file
+          mediaContent = `[File: ${media.name} (${(media.size / 1024).toFixed(2)} KB)]`;
+        }
+      } catch (err) {
+        console.error("Error reading media file:", err);
+        alert("Error reading media file. Proceeding without it.");
+      }
+    }
+
+    // Build prompt based on whether it's a question/analysis or content generation
+    let prompt;
+    if (isQuestion && mediaContent) {
+      // For questions with uploaded files, prioritize analysis
+      prompt = `User Question: ${contentGoal}\n\n`;
+      prompt += `Please analyze the following document and answer the user's question directly and concisely:\n\n`;
+      prompt += `Document Content (${media.name}):\n${mediaContent}\n\n`;
+      prompt += `Content Type context: ${contentType || "General"}\n\n`;
+      prompt += `Provide a clear, direct answer to the question based on the document analysis.`;
+    } else if (mediaContent) {
+      // For content generation with media
+      prompt = `Content Type: ${contentType}\nContent Goal: ${contentGoal}\n\n`;
+      prompt += `Uploaded Media File (${media.name}):\n${mediaContent}`;
+    } else {
+      // Standard content generation without media
+      prompt = `Content Type: ${contentType}\nContent Goal: ${contentGoal}`;
     }
 
     try {
@@ -82,17 +137,28 @@ const Dashboard = () => {
       );
 
       setGeneratedContent(data.generated_content || "No content generated.");
-      setAudienceTargeted(data.rationale || "No audience analysis available.");
-      setMarketingSuggestions(
-        data.marketing_suggestions || "No marketing suggestions available."
-      );
+
+      // Save prompt to history
+      const promptText = contentGoal.trim();
+      if (promptText) {
+        const historyKey = "contentHistory";
+        const existingHistory = JSON.parse(localStorage.getItem(historyKey) || "[]");
+        const historyEntry = {
+          prompt: promptText,
+          contentType: contentType || "Question/Analysis",
+          timestamp: new Date().toISOString(),
+          generatedContent: data.generated_content || ""
+        };
+        // Add to beginning of array and keep only last 50 entries
+        existingHistory.unshift(historyEntry);
+        const limitedHistory = existingHistory.slice(0, 50);
+        localStorage.setItem(historyKey, JSON.stringify(limitedHistory));
+      }
     } catch (err) {
       console.error("Error generating content:", err);
       setGeneratedContent(
         `Error generating content: ${err.message}. Please check if the backend server is running.`
       );
-      setAudienceTargeted("");
-      setMarketingSuggestions("");
     }
     setLoading(false);
   };
@@ -108,10 +174,10 @@ const Dashboard = () => {
             <div className="flex items-center mt-2">
               <div
                 className={`w-3 h-3 rounded-full mr-2 ${backendStatus === "connected"
-                    ? "bg-green-400"
-                    : backendStatus === "disconnected"
-                      ? "bg-red-400"
-                      : "bg-yellow-400"
+                  ? "bg-green-400"
+                  : backendStatus === "disconnected"
+                    ? "bg-red-400"
+                    : "bg-yellow-400"
                   }`}
               ></div>
               <span className="text-violet-300 text-sm">
@@ -136,10 +202,10 @@ const Dashboard = () => {
         <hr className="border-t border-violet-800 mb-8" />
 
         <div className="flex gap-8 flex-1">
-          {/* Left Column */}
-          <section className="flex-2 flex flex-col gap-6 w-2/3">
+          {/* Main Column */}
+          <section className="flex flex-col gap-6 w-full">
             <div>
-              <label className="block text-white text-lg font-medium mb-2">
+              <label className="block text-white text-lg font-medium mb-2 text-left">
                 Select Client Profile
               </label>
               <select
@@ -160,7 +226,7 @@ const Dashboard = () => {
               )}
             </div>
             <div>
-              <label className="block text-white text-lg font-medium mb-2">
+              <label className="block text-white text-lg font-medium mb-2 text-left">
                 Content Type
               </label>
               <select
@@ -168,7 +234,8 @@ const Dashboard = () => {
                 value={contentType}
                 onChange={(e) => setContentType(e.target.value)}
               >
-                <option value="">Select Media Type</option>
+                <option value="">Select Media Type (Optional for Questions)</option>
+                <option>Question/Analysis</option>
                 <option>Social Post</option>
                 <option>Email</option>
                 <option>LinkedIn Post</option>
@@ -179,7 +246,7 @@ const Dashboard = () => {
               </select>
             </div>
             <div>
-              <label className="block text-white text-lg font-medium mb-2">
+              <label className="block text-white text-lg font-medium mb-2 text-left">
                 Content Goal
               </label>
               <input
@@ -190,7 +257,7 @@ const Dashboard = () => {
               />
             </div>
             <div>
-              <label className="block text-white text-lg font-medium mb-2">
+              <label className="block text-white text-lg font-medium mb-2 text-left">
                 Upload Media
               </label>
               <input
@@ -201,8 +268,8 @@ const Dashboard = () => {
             </div>
             <button
               className={`w-full py-5 rounded-xl font-bold text-xl mt-2 mb-2 ${backendStatus === "connected" && !loading && selectedClientId
-                  ? "bg-violet-100 text-violet-950 hover:bg-violet-200"
-                  : "bg-gray-400 text-gray-600 cursor-not-allowed"
+                ? "bg-violet-100 text-violet-950 hover:bg-violet-200"
+                : "bg-gray-400 text-gray-600 cursor-not-allowed"
                 }`}
               onClick={handleGenerate}
               disabled={loading || backendStatus !== "connected" || !selectedClientId}
@@ -214,31 +281,11 @@ const Dashboard = () => {
                   : "Backend Disconnected"}
             </button>
             <div>
-              <label className="block text-white text-lg font-medium mb-2">
-                Marketing Suggestions
-              </label>
-              <div className="bg-white rounded-xl p-4 min-h-[120px] text-violet-950 text-lg">
-                {marketingSuggestions}
-              </div>
-            </div>
-          </section>
-
-          {/* Right Column */}
-          <section className="flex-1 flex flex-col gap-6">
-            <div>
-              <label className="block text-white text-lg font-medium mb-2">
+              <label className="block text-white text-lg font-medium mb-2 text-left">
                 Generated Content
               </label>
-              <div className="bg-white rounded-xl p-4 min-h-[180px] text-violet-950 text-lg">
+              <div className="bg-white rounded-xl p-4 min-h-[400px] text-violet-950 text-lg">
                 {generatedContent}
-              </div>
-            </div>
-            <div>
-              <label className="block text-white text-lg font-medium mb-2">
-                Audience Targeted
-              </label>
-              <div className="bg-white rounded-xl p-4 min-h-[100px] text-violet-950 text-base">
-                {audienceTargeted}
               </div>
             </div>
           </section>
